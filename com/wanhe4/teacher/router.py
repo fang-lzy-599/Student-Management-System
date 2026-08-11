@@ -19,10 +19,10 @@ router = APIRouter(prefix="/teachers", tags=["教师模块"])
 
 
 @router.get("/all")  # 路由装饰器：注册 GET 查询接口
-def list_teachers(keyword: str = "", page: int = 1, page_size: int = 5):
+def list_teachers(keyword: str = "", page: int = 1, page_size: int = 5, sort_field: str = "id", sort_order: str = "desc"):
     """查：获取所有教师，可按姓名模糊查询 + 分页"""
     model = TeacherModel()
-    data_list = model.get_all(keyword, page, page_size)
+    data_list = model.get_all(keyword, page, page_size, sort_field, sort_order)
     total = model.get_total_count(keyword)
 
     # 计算总页数
@@ -88,5 +88,9 @@ def delete_teacher(teacher_id: int):
     logger.info("删除教师 id:%s", teacher_id)
     return success(msg="删除成功")
 
+# @router.get("/sort")
+# def sort_teacher(sort_field:str="age", sort_order:str="desc"):
+#     data = TeacherModel().get_sort_list(sort_field, sort_order)
+#     return success(data)
 
 

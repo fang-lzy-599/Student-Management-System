@@ -11,21 +11,31 @@ from com.wanhe4.common.db import Database
 class TeacherModel:
     """教师表数据访问"""
 
-    def get_all(self, keyword='', page=1, page_size=5):
+    def get_all(self, keyword='', page=1, page_size=5, sort_field="id", sort_order="desc"):
         """
-        查询所有教师，可按姓名模糊查询
-        :param keyword: 姓名关键字（可选）
-        查询教师，支持模糊查询 + 分页
+        查询所有教师，模糊搜索 + 分页 + 排序
+        :param keyword: 姓名关键字
         :param page_size: 每页条数
-        :return:分页数据列表
+        :param sort_field: 排序字段
+        :param sort_order: 排序方式 asc/desc
+        :return:列表数据
         """
+        # ------ 白名单，防止SQL注入 ----
+        allow_fields = ["id", "age", "name", "subject"]
+        allow_order = ["asc", "desc"]
+        if sort_field not in allow_fields:
+            sort_field = "id"
+        if sort_order.lower() not in allow_order:
+            sort_order = "desc"
+
         sql = "SELECT * FROM teachers "
         params = []
         if keyword:
             sql += "WHERE name LIKE %s "
             params.append(f"%{keyword}%")
         # sql += "ORDER BY id LIMIT %s, %s"
-        sql += " ORDER BY id LIMIT %s, %s"
+        sql += f" ORDER BY {sort_field} {sort_order} LIMIT %s, %s"
+
         offset = (page - 1) * page_size
         params.append(offset)
         params.append(page_size)
@@ -112,7 +122,6 @@ class TeacherModel:
     def exist_by_name(self, name, phone):
         """根据教师姓名判断是否已经存在"""
         db = Database()
-
         try:
             return db.query_one("SELECT id FROM teachers WHERE name = %s and phone = %s", (name, phone,))
         finally:
@@ -120,10 +129,20 @@ class TeacherModel:
 
 
     # 新增排序功能
-    # def order(self):
+    # def get_sort_list(self, sort_field="age", sort_order="desc"):
+    #     # sort_order 只能是 desc / asc，防止SQL注入
+    #     allow_fields = ["id", "age", "name", "subject"]
+    #     allow_order = ["asc", "desc"]
+    #
+    #     if sort_field not in allow_fields:
+    #         sort_field = "age"
+    #
+    #     if sort_order.lower() not in allow_order:
+    #         sort_order = "desc"
+    #
     #     db = Database()
     #     try:
-    #         sql = "SELECT * FROM teachers order by age desc"
+    #         sql = f"SELECT * FROM teachers order by {sort_field} {sort_order}"
     #         return db.query_all(sql)
     #     finally:
     #         db.close()
