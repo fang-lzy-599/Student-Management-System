@@ -10,8 +10,8 @@ from com.wanhe4.student.router import router as auth_router
 from com.wanhe4.student.router import router as student_router
 from com.wanhe4.teacher.router import router as teacher_router
 from com.wanhe4.course.router import router as course_router
-from com.wanhe4.course.router import router as classes_router
-from com.wanhe4.course.router import router as stats_router
+from com.wanhe4.classes.router import router as classes_router
+from com.wanhe4.stats.router import router as stats_router
 
 # 导入公共模块（日志配置需在启动时加载，供各业务模块 logger 使用）
 import com.wanhe4.common.logging

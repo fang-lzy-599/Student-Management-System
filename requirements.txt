@@ -1,4 +1,4 @@
-# EAMS 后端运行依赖
+# 后端运行依赖
 # 说明：以下依赖均被项目代码实际使用，请勿随意删除
 
 fastapi>=0.110.0          # Web 框架（main.py / 各模块 router / exceptions）
