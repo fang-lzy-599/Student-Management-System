@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS courses (
     id          INT         PRIMARY KEY AUTO_INCREMENT COMMENT '课程ID',
     name        VARCHAR(50) NOT NULL                    COMMENT '课程名称',
     credit      INT         DEFAULT 1                   COMMENT '学分',
+    grade       VARCHAR(20) NOT NULL                    COMMENT '所属年级：高一/高二/高三',
     teacher_id  INT                                     COMMENT '授课教师ID',
     create_time DATETIME    DEFAULT CURRENT_TIMESTAMP   COMMENT '创建时间'
 ) COMMENT '课程表';
@@ -106,11 +107,11 @@ INSERT INTO students (name, gender, age, grade, class_id, teacher_id, enrollment
     ('周八', '女', 18, '高一', 2, 3, '2025-09-01');
 
 -- 课程示例（数学课由张老师教）
-INSERT INTO courses (name, credit, teacher_id) VALUES
-    ('数学', 3, 1),
-    ('语文', 3, 2),
-    ('英语', 2, 3),
-    ('物理', 2, 4);
+INSERT INTO courses (name, credit, grade, teacher_id) VALUES
+    ('数学', 3, '高一', 1),
+    ('语文', 3, '高一', 2),
+    ('英语', 2, '高二', 3),
+    ('物理', 2, '高三', 4);
 
 -- 选课示例：张三选了数学和语文，李四选了数学
 INSERT INTO student_course (student_id, course_id) VALUES
