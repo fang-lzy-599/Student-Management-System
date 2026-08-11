@@ -1,10 +1,19 @@
+"""
+班级模块 - 路由层
+
+职责：定义 /classes 前缀下端点，存在性/参数校验后统一委托 ClassModel
+说明：
+  - 所有 SQL 均收敛到 model.py，路由层不再直接触碰 Database
+  - 新增/修改班级前校验班主任教师ID合法性
+  - 删除班级前由 model 自动解除学生关联，避免脏数据
+"""
 import logging
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 
 from com.wanhe4.classes.model import ClassModel
 from com.wanhe4.classes.vo import ClassCreate, ClassUpdate, MoveStudentVO
-from com.wanhe4.common.db import Database
 from com.wanhe4.common.response import success
 
 logger = logging.getLogger(__name__)
@@ -12,29 +21,19 @@ logger = logging.getLogger(__name__)
 # 创建子路由
 router = APIRouter(prefix="/classes", tags=["班级模块"])
 
-
-def _teacher_exists(teacher_id: Optional[int]) -> bool:
-    """校验班主任教师是否存在"""
-    if teacher_id is None:
-        return True
-    db = Database()
-    try:
-        row = db.query_one("SELECT id FROM teachers WHERE id = %s", (teacher_id,))
-        return row is not None
-    finally:
-        db.close()
+_model = ClassModel()
 
 
 @router.get("/all")
 def list_classes(keyword: str = ""):
-    """查：获取所有班级（含班主任姓名），可按班级名模糊查询"""
-    return success(ClassModel().get_all(keyword))
+    """查：获取所有班级（含班主任姓名、班级学生数），可按班级名/年级关键字模糊查询"""
+    return success(_model.get_all(keyword))
 
 
 @router.get("/one/{class_id}")
 def get_class(class_id: int):
-    """查：按 ID 获取单个班级"""
-    cls = ClassModel().get_by_id(class_id)
+    """查：按 ID 获取单个班级（含班主任姓名、班级学生数）"""
+    cls = _model.get_by_id(class_id)
     if cls is None:
         raise HTTPException(status_code=404, detail="班级不存在")
     return success(cls)
@@ -42,12 +41,11 @@ def get_class(class_id: int):
 
 @router.post("/add")
 def add_class(data: ClassCreate):
-    """增：新增班级（若指定班主任，先验证教师存在）"""
-    # 校验班主任
-    if not _teacher_exists(data.head_teacher_id):
+    """增：新增班级（校验班主任教师存在；返回数据库自增的真实班级ID）"""
+    if not _model.teacher_exists(data.head_teacher_id):
         raise HTTPException(status_code=404, detail="班主任教师不存在")
 
-    new_id = ClassModel().create(
+    new_id = _model.create(
         name=data.name,
         head_teacher_id=data.head_teacher_id,
         grade=data.grade
@@ -58,13 +56,13 @@ def add_class(data: ClassCreate):
 
 @router.put("/update/{class_id}")
 def update_class(class_id: int, data: ClassUpdate):
-    """改：修改班级信息"""
-    if ClassModel().get_by_id(class_id) is None:
+    """改：修改班级信息（校验班级存在 + 班主任教师存在）"""
+    if _model.get_by_id(class_id) is None:
         raise HTTPException(status_code=404, detail="班级不存在")
-    if not _teacher_exists(data.head_teacher_id):
+    if not _model.teacher_exists(data.head_teacher_id):
         raise HTTPException(status_code=404, detail="班主任教师不存在")
 
-    ClassModel().update(
+    _model.update(
         cid=class_id,
         name=data.name,
         head_teacher_id=data.head_teacher_id,
@@ -76,80 +74,44 @@ def update_class(class_id: int, data: ClassUpdate):
 
 @router.delete("/del/{class_id}")
 def delete_class(class_id: int):
-    """删：删除班级"""
-    if ClassModel().get_by_id(class_id) is None:
+    """删：删除班级（自动解除该班学生关联，避免脏数据）"""
+    if _model.get_by_id(class_id) is None:
         raise HTTPException(status_code=404, detail="班级不存在")
-    ClassModel().delete(class_id)
+    _model.delete(class_id)
     logger.info("删除班级 id:%s", class_id)
     return success(msg="删除成功")
 
 
 @router.post("/clear_students/{class_id}")
 def clear_class_students(class_id: int):
-    """
-    清空指定班级下所有学生（学生class_id置空）
-    """
-    # 校验班级是否存在
-    if ClassModel().get_by_id(class_id) is None:
+    """清空指定班级下所有学生（学生 class_id 置空，班级本身保留）"""
+    if _model.get_by_id(class_id) is None:
         raise HTTPException(status_code=404, detail="班级不存在")
 
-    db = Database()
-    try:
-        sql = "UPDATE students SET class_id = NULL WHERE class_id = %s"
-        affected = db.execute(sql, (class_id,))
-        logger.info("清空班级%s学生，共处理%s人", class_id, affected)
-    except Exception as e:
-        logger.error("清空班级学生异常：%s", e)
-        raise HTTPException(status_code=500, detail="操作失败")
-    finally:
-        db.close()
-
+    affected = _model.clear_students(class_id)
+    logger.info("清空班级%s学生，共处理%s人", class_id, affected)
     return success(msg=f"已清空班级下所有学生，共计{affected}人")
 
 
-# ============ 新增接口 1：查询班级内学生 ============
 @router.get("/{class_id}/students")
 def get_class_students(class_id: int):
-    """获取指定班级内所有学生"""
-    if ClassModel().get_by_id(class_id) is None:
+    """查：获取指定班级内所有学生（JOIN 带出选课教师姓名）"""
+    if _model.get_by_id(class_id) is None:
         raise HTTPException(status_code=404, detail="班级不存在")
 
-    db = Database()
-    try:
-        sql = "SELECT * FROM students WHERE class_id = %s"
-        student_list = db.query_all(sql, (class_id,))
-    except Exception as e:
-        logger.error("查询班级学生异常：%s", e)
-        raise HTTPException(status_code=500, detail="查询失败")
-    finally:
-        db.close()
+    student_list = _model.get_students(class_id)
+    logger.info("查询班级%s学生，共%s人", class_id, len(student_list))
     return success(data=student_list)
 
 
-# ============ 新增接口 2：批量转移学生 ============
 @router.post("/move_students")
 def move_students(data: MoveStudentVO):
-    """批量转移学生到目标班级"""
-    if ClassModel().get_by_id(data.target_class_id) is None:
+    """批量转移学生到目标班级（校验目标班级存在）"""
+    if _model.get_by_id(data.target_class_id) is None:
         raise HTTPException(status_code=404, detail="目标班级不存在")
     if not data.student_ids:
         raise HTTPException(status_code=400, detail="学生ID列表不能为空")
 
-    db = Database()
-    try:
-        db.conn.autocommit(False)
-        sid_tuple = tuple(data.student_ids)
-        placeholders = ",".join(["%s"] * len(sid_tuple))
-        sql = f"UPDATE students SET class_id=%s WHERE id IN ({placeholders})"
-        params = [data.target_class_id] + list(sid_tuple)
-        affected = db.execute(sql, params)
-        db.conn.commit()
-        logger.info("批量移班：学生%s 移入班级%s，共%d人", data.student_ids, data.target_class_id, affected)
-    except Exception as e:
-        db.conn.rollback()
-        logger.error("批量移班失败：%s", e)
-        raise HTTPException(status_code=500, detail="移班失败，操作已回滚")
-    finally:
-        db.close()
-
+    affected = _model.move_students(data.student_ids, data.target_class_id)
+    logger.info("批量移班：学生%s 移入班级%s，共%d人", data.student_ids, data.target_class_id, affected)
     return success(msg=f"成功转移{affected}名学生")
