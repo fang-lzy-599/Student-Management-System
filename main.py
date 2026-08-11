@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 # 导入各业务模块子路由（每个模块一个 APIRouter）
-from com.wanhe4.student.router import router as auth_router
+from com.wanhe4.auth.router import router as auth_router
 from com.wanhe4.student.router import router as student_router
 from com.wanhe4.teacher.router import router as teacher_router
 from com.wanhe4.course.router import router as course_router
