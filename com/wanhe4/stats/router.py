@@ -1,33 +1,51 @@
-# 文件名：stats/router.py
-"""
-统计模块：首页统计分析接口（公开，无鉴权）
-
-职责：
-- GET /stats/class-count：各班级人数统计（柱状图数据源）
-- GET /stats/gender-ratio：在校学生男女占比（饼状图数据源）
-"""
-import logging
-
-from fastapi import APIRouter
-
+from fastapi import APIRouter, HTTPException
 from com.wanhe4.stats.model import StatsModel
 from com.wanhe4.common.response import success
-
-logger = logging.getLogger(__name__)
-
-# 创建子路由
-router = APIRouter(prefix="/stats", tags=["统计模块"])
+import logging
 
 
-@router.get("/class-count")  # 路由装饰器：注册 GET 查询接口
+router = APIRouter(prefix="/stats", tags=["信息总览"])
+
+@router.get("/class-count")
 def class_count():
-    """查：各班级人数统计（柱状图数据源）"""
-    logger.info("查询各班级人数统计")
-    return success(StatsModel().class_count())
+    logging.info("班级人数统计")
+    return success({"items": StatsModel().class_count()})
 
 
-@router.get("/gender-ratio")  # 路由装饰器：注册 GET 查询接口
-def gender_ratio():
-    """查：在校学生男女占比（饼状图数据源）"""
-    logger.info("查询在校学生男女占比")
-    return success(StatsModel().gender_ratio())
+@router.get("/grade-count")
+def grade_count():
+    logging.info("年级人数统计")
+    return success({"items": StatsModel().grade_distribution()})
+
+
+@router.get("/stu-gender-ratio")
+def stu_gender_ratio():
+    logging.info("学生性别比例分析")
+    return success({"items": StatsModel().stu_gender_part()})
+
+
+@router.get("/tea-gender-ratio")
+def tea_gender_ratio():
+    logging.info("老师性别比例分析")
+    return success({"items": StatsModel().tea_gender_part()})
+
+
+@router.get("/course-avg")
+def course_avg():
+    logging.info("各课程成绩平均分与及格率")
+    return success({"items": StatsModel().get_avg()})
+
+@router.get("/student-count")
+def student_count():
+    logging.info("在校学生总数统计")
+    return success({"items": StatsModel().count_all_students()})
+
+@router.get("/teacher-count")
+def teacher_count():
+    logging.info("在校老师总数统计")
+    return success({"items": StatsModel().count_all_teachers()})
+
+@router.get("/class-count-total")
+def class_count_total():
+    logging.info("班级总数统计")
+    return success({"items": StatsModel().count_all_classes()})
