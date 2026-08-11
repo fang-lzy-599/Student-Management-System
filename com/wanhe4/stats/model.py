@@ -8,7 +8,7 @@ class StatsModel():
         db = Database()
         try:
             sql="select count(*) 总数 from students"
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("当前在校学生%s人",len(rows))
             return rows
         finally:
@@ -18,7 +18,7 @@ class StatsModel():
         db = Database()
         try:
             sql="select count(*) as 人数 from teachers"
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("当前在校老师%s人",len(rows))
             return rows
         finally:
@@ -28,7 +28,7 @@ class StatsModel():
         db = Database()
         try:
             sql="select count(*) as 班级数量 from classes"
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("当前开设班级%s个",len(rows))
             return rows
         finally:
@@ -39,7 +39,7 @@ class StatsModel():
         db = Database()
         try:
             sql="select gender,count(*) as 总数 from students group by gender"
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("当前学生男女比例%s",len(rows))
             return rows
         finally:
@@ -49,7 +49,7 @@ class StatsModel():
         db = Database()
         try:
             sql="select gender,count(*) from teachers group by gender"
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("当前老师男女比例%s",len(rows))
             return rows
         finally:
@@ -75,7 +75,7 @@ class StatsModel():
             sql=("select grade,count(*) as 人数 from students "
                  "where grade is not null and grade <> '' "
                  "group by grade order by grade")
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("统计各年级人数%s",len(rows))
             return rows
         finally:
@@ -105,7 +105,7 @@ class StatsModel():
                 "GROUP BY course_id "
                 "ORDER BY course_id"
             )
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("统计各课程平均分%s",len(rows))
             return rows
         finally:
