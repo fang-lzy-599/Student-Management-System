@@ -22,7 +22,7 @@ class User:
         db = Database()
         sql = "SELECT * FROM users WHERE username = %s"
         try:
-            return db.get_one(sql, (username,))
+            return db.query_one(sql, (username,))
         finally:
             db.close()
 

@@ -6,4 +6,4 @@ uvicorn>=0.29.0           # ASGI 服务器（main.py __main__ 启动块）
 pydantic>=2.6.0           # 请求参数校验 VO（各模块 vo.py 的 BaseModel/Field）
 pymysql>=1.1.0            # MySQL 驱动（common/db.py）
 pydantic-settings>=2.0    # .env 配置读取（common/config.py）
-bcrypt>=5.0.0             # 用户密码加盐哈希加密，替代明文存储，登录密码安全校验
+bcrypt>=5.0.0             # 密码加密（common/utils.py）
