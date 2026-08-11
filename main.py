@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse
 
 # 导入各业务模块子路由（每个模块一个 APIRouter）
 from com.wanhe4.student.router import router as student_router
+from com.wanhe4.teacher.router import router as teacher_router
 
 # 导入公共模块（日志配置需在启动时加载，供各业务模块 logger 使用）
 import com.wanhe4.common.logging
@@ -28,6 +29,7 @@ register_exception_handlers(app)
 
 # 挂载所有模块化路由
 app.include_router(student_router)
+app.include_router(teacher_router)
 
 # 根路径：重定向到登录页面
 @app.get("/")
