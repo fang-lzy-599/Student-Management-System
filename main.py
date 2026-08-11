@@ -6,9 +6,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 # 导入各业务模块子路由（每个模块一个 APIRouter）
+from com.wanhe4.student.router import router as auth_router
 from com.wanhe4.student.router import router as student_router
 from com.wanhe4.teacher.router import router as teacher_router
 from com.wanhe4.course.router import router as course_router
+from com.wanhe4.course.router import router as classes_router
+from com.wanhe4.course.router import router as stats_router
 
 # 导入公共模块（日志配置需在启动时加载，供各业务模块 logger 使用）
 import com.wanhe4.common.logging
@@ -29,9 +32,12 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 register_exception_handlers(app)
 
 # 挂载所有模块化路由
+app.include_router(auth_router)
 app.include_router(student_router)
 app.include_router(teacher_router)
 app.include_router(course_router)
+app.include_router(classes_router)
+app.include_router(stats_router)
 
 # 根路径：重定向到登录页面
 @app.get("/")
