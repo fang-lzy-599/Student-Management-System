@@ -72,9 +72,10 @@ class StatsModel():
         """统计各年级学生人数"""
         db = Database()
         try:
-            sql=("select grade,count(*) as 人数 from students "
-                 "where grade is not null and grade <> '' "
-                 "group by grade order by grade")
+            sql=("select c.grade,count(s.id) as 人数 "
+                 "from classes c "
+                 "inner join students s on s.class_id=c.id "
+                 "group by c.grade order by c.grade")
             rows=db.query_all(sql)
             logging.info("统计各年级人数%s",len(rows))
             return rows
