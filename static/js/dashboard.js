@@ -10,6 +10,9 @@ const state = {
     students: [],
     classes: [],
     teachers: [],
+    enrollmentStudentId: null,
+    enrollmentSearchResults: [],
+    enrollmentSearchTimer: null,
     charts: {},
 };
 
@@ -408,22 +411,79 @@ async function delCourse(id) {
 
 // -------------------- 学生选课与成绩（核心功能） --------------------
 async function loadEnrollmentStudents() {
+    if (!state.enrollmentStudentId) return;
+    const student = await apiSafe(`/student/one/${state.enrollmentStudentId}`);
+    if (!student) clearEnrollmentStudent();
+}
+
+function scheduleEnrollmentStudentSearch() {
+    clearTimeout(state.enrollmentSearchTimer);
+    state.enrollmentStudentId = null;
+    document.getElementById('enrollmentWorkspace').classList.add('hidden');
+    document.getElementById('enrollmentEmpty').classList.remove('hidden');
+    document.getElementById('studentProfile').textContent = '正在输入姓名，请从搜索结果中选择学生';
+    const keyword = document.getElementById('enrollStudentKeyword').value.trim();
+    if (!keyword) {
+        document.getElementById('enrollStudentResults').classList.add('hidden');
+        document.getElementById('studentProfile').textContent = '搜索并选择学生后，将自动匹配该生年级课程';
+        return;
+    }
+    state.enrollmentSearchTimer = setTimeout(searchEnrollmentStudents, 260);
+}
+
+function enrollmentSearchKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        clearTimeout(state.enrollmentSearchTimer);
+        searchEnrollmentStudents();
+    }
+}
+
+async function searchEnrollmentStudents() {
+    const keyword = document.getElementById('enrollStudentKeyword').value.trim();
+    const resultBox = document.getElementById('enrollStudentResults');
+    if (!keyword) {
+        resultBox.classList.add('hidden');
+        return toast('请输入学生姓名', 'error');
+    }
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = '<div class="student-search-message">正在搜索…</div>';
     try {
-        state.students = await api('/student/all');
-        const select = document.getElementById('enrollStudent');
-        const old = select.value;
-        select.innerHTML = `<option value="">请选择学生</option>${state.students.map(item => `<option value="${item.id}">${escapeHtml(item.name)} · ${escapeHtml(item.grade)} · 学号 ${item.id}</option>`).join('')}`;
-        if (state.students.some(item => String(item.id) === old)) select.value = old;
-    } catch (_) {}
+        state.enrollmentSearchResults = await api(`/student/all?keyword=${encodeURIComponent(keyword)}`);
+        resultBox.innerHTML = state.enrollmentSearchResults.length
+            ? state.enrollmentSearchResults.map(student => `<button class="student-search-item" onclick="chooseEnrollmentStudent(${student.id})"><span><strong>${escapeHtml(student.name)}</strong><small>${escapeHtml(student.grade)} · ${escapeHtml(student.class_name || '未分班')}</small></span><span class="student-id">学号 ${student.id}</span></button>`).join('')
+            : '<div class="student-search-message">没有找到姓名匹配的学生</div>';
+    } catch (_) {
+        resultBox.innerHTML = '<div class="student-search-message">搜索失败，请稍后重试</div>';
+    }
+}
+
+function chooseEnrollmentStudent(studentId) {
+    const student = state.enrollmentSearchResults.find(item => Number(item.id) === Number(studentId));
+    if (!student) return;
+    state.enrollmentStudentId = Number(studentId);
+    document.getElementById('enrollStudentKeyword').value = student.name;
+    document.getElementById('enrollStudentResults').classList.add('hidden');
+    loadEnrollmentWorkspace();
+}
+
+function clearEnrollmentStudent() {
+    state.enrollmentStudentId = null;
+    state.enrollmentSearchResults = [];
+    document.getElementById('enrollStudentKeyword').value = '';
+    document.getElementById('enrollStudentResults').classList.add('hidden');
+    document.getElementById('enrollmentWorkspace').classList.add('hidden');
+    document.getElementById('enrollmentEmpty').classList.remove('hidden');
+    document.getElementById('studentProfile').textContent = '搜索并选择学生后，将自动匹配该生年级课程';
 }
 
 async function loadEnrollmentWorkspace() {
-    const studentId = Number(document.getElementById('enrollStudent').value);
+    const studentId = Number(state.enrollmentStudentId);
     const empty = document.getElementById('enrollmentEmpty');
     const workspace = document.getElementById('enrollmentWorkspace');
     if (!studentId) {
         empty.classList.remove('hidden'); workspace.classList.add('hidden');
-        document.getElementById('studentProfile').innerHTML = '选择学生后将自动匹配该生年级课程';
+        document.getElementById('studentProfile').innerHTML = '搜索并选择学生后，将自动匹配该生年级课程';
         return;
     }
     try {
@@ -432,7 +492,7 @@ async function loadEnrollmentWorkspace() {
             api(`/courses/available/${studentId}`),
             api(`/courses/student/${studentId}`),
         ]);
-        const joinedStudent = state.students.find(item => Number(item.id) === studentId) || student;
+        const joinedStudent = state.enrollmentSearchResults.find(item => Number(item.id) === studentId) || student;
         empty.classList.add('hidden'); workspace.classList.remove('hidden');
         document.getElementById('studentProfile').innerHTML = `<strong>${escapeHtml(student.name)}</strong><span class="badge grade-badge">${escapeHtml(student.grade)}</span>　${escapeHtml(joinedStudent.class_name || '未分班')}　·　已选 ${selected.length} 门`;
         document.getElementById('availableCount').textContent = `${available.length} 门`;

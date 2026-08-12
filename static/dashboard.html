@@ -107,8 +107,12 @@
         <section id="enrollment" class="panel">
             <div class="section-heading"><div><h2>学生选课与成绩</h2><p>选择一名学生，完成选课、退课、查课和成绩登记</p></div></div>
             <div class="student-picker card">
-                <div><label for="enrollStudent">当前学生</label><select id="enrollStudent" onchange="loadEnrollmentWorkspace()"><option value="">请选择学生</option></select></div>
-                <div id="studentProfile" class="student-profile muted">选择学生后将自动匹配该生年级课程</div>
+                <div class="student-search-wrap">
+                    <label for="enrollStudentKeyword">按姓名搜索学生</label>
+                    <div class="student-search-line"><input id="enrollStudentKeyword" autocomplete="off" placeholder="输入学生姓名，如：张晨" oninput="scheduleEnrollmentStudentSearch()" onkeydown="enrollmentSearchKeydown(event)"><button class="btn btn-secondary" onclick="searchEnrollmentStudents()">搜索</button></div>
+                    <div id="enrollStudentResults" class="student-search-results hidden"></div>
+                </div>
+                <div id="studentProfile" class="student-profile muted">搜索并选择学生后，将自动匹配该生年级课程</div>
             </div>
             <div id="enrollmentEmpty" class="empty-state card"><div>选</div><h3>先选择一名学生</h3><p>系统会同时加载可选课程和已选课程。</p></div>
             <div id="enrollmentWorkspace" class="enrollment-grid hidden">
