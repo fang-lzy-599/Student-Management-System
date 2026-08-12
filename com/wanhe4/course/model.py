@@ -101,6 +101,7 @@ class CourseModel:
         """
         查询某学生还能选择的本年级课程。
         规则：课程年级 = 学生年级，并且该学生还没有选过这门课。
+        return:  course_name/credit/course_grade/teacher_name
         """
         db = Database()
         try:
