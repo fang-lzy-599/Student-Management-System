@@ -163,6 +163,42 @@ async function loadStudents(keyword) {
     }
 }
 
+async function searchStudentById() {
+    const id = Number(document.getElementById('stuIdKeyword').value);
+    if (!Number.isInteger(id) || id <= 0) {
+        toast('请输入正确的学生ID', false);
+        return;
+    }
+    try {
+        const student = await api(`/student/one/${id}`);
+        const courses = await apiSafe(`/student/${id}/courses`, []);
+        student.course_count = Array.isArray(courses) ? courses.length : 0;
+        document.getElementById('stuKeyword').value = '';
+        document.getElementById('studentBody').innerHTML = `<tr>
+            <td><input class="student-check" type="checkbox" value="${student.id}" onchange="updateBatchButton()"></td>
+            <td>${student.id}</td><td><strong>${escapeHtml(student.name)}</strong></td><td>${escapeHtml(student.gender)}</td>
+            <td>${student.age}</td><td><span class="badge grade-badge">${escapeHtml(student.grade)}</span></td>
+            <td>${escapeHtml(student.class_name || '未分班')}</td><td>${escapeHtml(student.teacher_name || '未指定')}</td>
+            <td><span class="badge badge-blue">${Number(student.course_count)} 门</span></td>
+            <td>
+                <button class="btn btn-small btn-secondary" onclick="openStudentModal('edit',${student.id})">编辑</button>
+                <button class="btn btn-small btn-warning" onclick="openAssignClassModal(${student.id})">分班</button>
+                <button class="btn btn-small btn-ghost" onclick="openAssignTeacherModal(${student.id})">教师</button>
+                <button class="btn btn-small btn-success" onclick="openStudentCourseDetail(${student.id},'${escapeHtml(student.name)}')">课程</button>
+                <button class="btn btn-small btn-danger-outline" onclick="delStudent(${student.id})">删除</button>
+            </td></tr>`;
+        state.studentPage = 1;
+        renderStudentPager(1);
+        document.getElementById('studentCheckAll').checked = false;
+        updateBatchButton();
+    } catch (_) {
+        document.getElementById('studentBody').innerHTML = emptyRow(10, '没有找到这个ID的学生');
+        renderStudentPager(0);
+        document.getElementById('studentCheckAll').checked = false;
+        updateBatchButton();
+    }
+}
+
 function renderStudentPager(total) {
     const pages = Math.max(1, Math.ceil(total / state.studentPageSize));
     document.getElementById('stuPager').innerHTML = `<button class="btn btn-ghost" ${state.studentPage <= 1 ? 'disabled' : ''} onclick="gotoStudentPage(${state.studentPage - 1})">上一页</button><span class="page-info">第 ${state.studentPage} / ${pages} 页，共 ${total} 条</span><button class="btn btn-ghost" ${state.studentPage >= pages ? 'disabled' : ''} onclick="gotoStudentPage(${state.studentPage + 1})">下一页</button>`;
@@ -170,7 +206,7 @@ function renderStudentPager(total) {
 
 function gotoStudentPage(page) { state.studentPage = page; loadStudents(); }
 function searchStudents() { state.studentPage = 1; loadStudents(); }
-function resetStudents() { document.getElementById('stuKeyword').value = ''; state.studentPage = 1; loadStudents(''); }
+function resetStudents() { document.getElementById('stuKeyword').value = ''; document.getElementById('stuIdKeyword').value = ''; state.studentPage = 1; loadStudents(''); }
 function toggleAllStudents(checked) { document.querySelectorAll('.student-check').forEach(item => item.checked = checked); updateBatchButton(); }
 function selectedStudentIds() { return [...document.querySelectorAll('.student-check:checked')].map(item => Number(item.value)); }
 function updateBatchButton() { document.getElementById('batchDeleteBtn').disabled = selectedStudentIds().length === 0; }

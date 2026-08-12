@@ -72,6 +72,8 @@
                 <div class="toolbar">
                     <div class="search-box"><span>⌕</span><input id="stuKeyword" placeholder="搜索学生姓名" onkeydown="enterSearch(event, searchStudents)"></div>
                     <button class="btn btn-secondary" onclick="searchStudents()">查询</button>
+                    <div class="search-box id-search-box"><span>#</span><input id="stuIdKeyword" type="number" min="1" placeholder="输入学生ID" onkeydown="enterSearch(event, searchStudentById)"></div>
+                    <button class="btn btn-secondary" onclick="searchStudentById()">按ID查询</button>
                     <button class="btn btn-ghost" onclick="resetStudents()">重置</button>
                     <button class="btn btn-danger-outline push-right" id="batchDeleteBtn" onclick="batchDeleteStudents()" disabled>批量删除</button>
                 </div>
