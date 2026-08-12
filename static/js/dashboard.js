@@ -358,7 +358,10 @@ function resetCourses() { document.getElementById('couKeyword').value = ''; docu
 async function openCourseModal(mode, id) {
     try {
         const [course, teachers] = await Promise.all([mode === 'edit' ? api(`/courses/one/${id}`) : Promise.resolve({}), getAllTeachers()]);
-        openModal(mode === 'add' ? '新增课程' : '编辑课程', `<div class="field"><label>课程名称</label><input id="courseName" maxlength="50" value="${escapeHtml(course.name || '')}" placeholder="例如：数学拓展"></div><div class="field-row"><div class="field"><label>适用年级</label><select id="courseGrade">${gradeOptions(course.grade)}</select></div><div class="field"><label>学分</label><input id="courseCredit" type="number" min="1" value="${course.credit ?? 1}"></div></div><div class="field"><label>授课教师</label><select id="courseTeacher"><option value="">暂不指定</option>${teachers.map(item => `<option value="${item.id}" ${Number(course.teacher_id) === Number(item.id) ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.subject)}</option>`).join('')}</select></div><div class="modal-note">保存后，只有年级与课程一致的学生才能在“选课与成绩”页面看到该课程。</div>`, { subtitle: mode === 'add' ? '创建一门按年级开放的新课程' : `课程 ID：${id}` });
+        state.courseFormTeachers = teachers;
+        state.courseFormTeacherId = course.teacher_id ?? null;
+        openModal(mode === 'add' ? '新增课程' : '编辑课程', `<div class="field"><label>课程名称</label><input id="courseName" maxlength="50" value="${escapeHtml(course.name || '')}" placeholder="例如：数学" oninput="renderCourseTeacherOptions()"></div><div class="field-row"><div class="field"><label>适用年级</label><select id="courseGrade">${gradeOptions(course.grade)}</select></div><div class="field"><label>学分</label><input id="courseCredit" type="number" min="1" value="${course.credit ?? 1}"></div></div><div class="field"><label>授课教师</label><select id="courseTeacher"></select><small id="courseTeacherHint" class="muted"></small></div><div class="modal-note">授课教师的教授科目必须与课程名称一致；例如数学课程只能选择数学教师。</div>`, { subtitle: mode === 'add' ? '创建一门按年级开放的新课程' : `课程 ID：${id}` });
+        renderCourseTeacherOptions();
         modalOnOk = async () => {
             const body = { name: document.getElementById('courseName').value.trim(), credit: Number(document.getElementById('courseCredit').value), grade: document.getElementById('courseGrade').value, teacher_id: nullableNumber('courseTeacher') };
             if (!body.name) return toast('请输入课程名称', 'error');
@@ -367,6 +370,28 @@ async function openCourseModal(mode, id) {
             if (ok) { closeModal(); await Promise.all([loadCourses(), loadEnrollmentWorkspace()]); }
         };
     } catch (_) {}
+}
+
+function renderCourseTeacherOptions() {
+    const nameInput = document.getElementById('courseName');
+    const select = document.getElementById('courseTeacher');
+    const hint = document.getElementById('courseTeacherHint');
+    if (!nameInput || !select || !hint) return;
+
+    const courseName = nameInput.value.trim();
+    const currentTeacherId = select.value || String(state.courseFormTeacherId ?? '');
+    const matched = (state.courseFormTeachers || []).filter(
+        teacher => String(teacher.subject || '').trim() === courseName
+    );
+    select.innerHTML = `<option value="">暂不指定教师</option>${matched.map(teacher => `<option value="${teacher.id}">${escapeHtml(teacher.name)} · ${escapeHtml(teacher.subject)}</option>`).join('')}`;
+    if (matched.some(teacher => String(teacher.id) === currentTeacherId)) {
+        select.value = currentTeacherId;
+    }
+    state.courseFormTeacherId = null;
+
+    if (!courseName) hint.textContent = '请先输入课程名称，再选择对应科目的教师';
+    else if (!matched.length) hint.textContent = `目前没有教授“${courseName}”的教师，可以暂不指定`;
+    else hint.textContent = `已找到 ${matched.length} 名教授“${courseName}”的教师`;
 }
 
 async function openCourseRoster(courseId) {
