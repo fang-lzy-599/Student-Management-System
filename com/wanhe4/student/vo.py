@@ -39,6 +39,11 @@ class BatchDeleteRequest(BaseModel):
     ids: list[int] = Field(..., min_length=1, description="要删除的学生ID列表")
 
 
+class CourseSelect(BaseModel):
+    """选课/退课请求体"""
+    course_id: int = Field(..., description="课程ID")
+
+
 
 
 

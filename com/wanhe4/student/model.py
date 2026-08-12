@@ -226,7 +226,71 @@ class StudentModel:
             db.close()
 
 
+    # ==================== 学生选课 ====================
 
+    def is_selected(self, student_id, course_id):
+        """
+        判断学生是否已选某课程（防重复选课）
+        :return: True 已选 / False 未选
+        """
+        db = Database()
+        try:
+            row = db.query_one(
+                "SELECT id FROM student_course WHERE student_id=%s AND course_id=%s",
+                (student_id, course_id)
+            )
+            return row is not None
+        finally:
+            db.close()
 
+    def select_course(self, student_id, course_id):
+        """
+        学生选课：插入 student_course 记录
+        :return: 新记录自增 ID
+        """
+        db = Database()
+        try:
+            return db.insert(
+                "INSERT INTO student_course (student_id, course_id) VALUES (%s, %s)",
+                (student_id, course_id)
+            )
+        finally:
+            db.close()
 
+    def unselect_course(self, student_id, course_id):
+        """
+        学生退课：删除 student_course 记录
+        :return: 受影响行数
+        """
+        db = Database()
+        try:
+            return db.execute(
+                "DELETE FROM student_course WHERE student_id=%s AND course_id=%s",
+                (student_id, course_id)
+            )
+        finally:
+            db.close()
 
+    def get_available_courses(self, student_id):
+        """
+        查询某学生还能选的本年级课程（排除已选课程）
+        :param student_id: 学生ID
+        :return: 可选课程列表（含课程名/学分/授课教师/已选人数）
+        """
+        db = Database()
+        try:
+            return db.query_all(
+                "SELECT c.id, c.name, c.credit, c.grade, t.name AS teacher_name, "
+                "       (SELECT COUNT(*) FROM student_course sc2 WHERE sc2.course_id = c.id) AS selected_count "
+                "FROM courses c "
+                "JOIN students s ON s.id = %s AND c.grade = s.grade "
+                "LEFT JOIN teachers t ON c.teacher_id = t.id "
+                "WHERE NOT EXISTS ("
+                "    SELECT 1 FROM student_course sc "
+                "    WHERE sc.student_id = s.id AND sc.course_id = c.id"
+                ") "
+                "ORDER BY c.id",
+                (student_id,)
+            )
+        finally:
+            db.close()

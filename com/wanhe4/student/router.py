@@ -3,9 +3,10 @@ import logging
 from fastapi import APIRouter,HTTPException
 
 from com.wanhe4.student.model import StudentModel
-from com.wanhe4.student.vo import StudentCreate,StudentUpdate, ClassAssign, TeacherAssign, BatchDeleteRequest
+from com.wanhe4.student.vo import StudentCreate,StudentUpdate, ClassAssign, TeacherAssign, BatchDeleteRequest, CourseSelect
 from com.wanhe4.classes.model import ClassModel
 from com.wanhe4.teacher.model import TeacherModel
+from com.wanhe4.course.model import CourseModel
 from com.wanhe4.common.response import success
 
 logger = logging.getLogger(__name__)
@@ -16,10 +17,14 @@ router = APIRouter(prefix="/student", tags=["学生模块"])
 
 @router.post("/add")  # 路由装饰器：注册 POST 新增接口
 def add_student(data: StudentCreate):
-    """增：新增学生（若指定班级/教师，先验证存在）"""
+    """增：新增学生（若指定班级，校验年级匹配；若指定教师，校验存在）"""
     # 若指定了班级/教师，先验证存在
-    if data.class_id and ClassModel().get_by_id(data.class_id) is None:
-        raise HTTPException(status_code=404, detail="班级不存在")
+    if data.class_id:
+        cls_grade = ClassModel().get_grade(data.class_id)
+        if cls_grade is None:
+            raise HTTPException(status_code=404, detail="班级不存在")
+        if cls_grade != data.grade:
+            raise HTTPException(status_code=400, detail=f"学生年级({data.grade})与班级年级({cls_grade})不匹配")
     if data.teacher_id and TeacherModel().get_by_id(data.teacher_id) is None:
         raise HTTPException(status_code=404, detail="教师不存在")
 
@@ -73,11 +78,15 @@ def list_students(keyword: str = ""):
 
 @router.put("/assign-class/{student_id}")  # 路由装饰器：注册 PUT 修改接口
 def assign_class(student_id: int, data: ClassAssign):
-    """分班：把学生安排到指定班级"""
-    if StudentModel().get_by_id(student_id) is None:
+    """分班：把学生安排到指定班级（校验年级匹配）"""
+    student = StudentModel().get_by_id(student_id)
+    if student is None:
         raise HTTPException(status_code=404, detail="学生不存在")
-    if ClassModel().get_by_id(data.class_id) is None:
+    cls_grade = ClassModel().get_grade(data.class_id)
+    if cls_grade is None:
         raise HTTPException(status_code=404, detail="班级不存在")
+    if student.get("grade") != cls_grade:
+        raise HTTPException(status_code=400, detail=f"学生年级({student.get('grade')})与班级年级({cls_grade})不匹配，不能分班")
     StudentModel().change_class(student_id, data.class_id)
     logger.info("学生分班 id:%s → 班级%s", student_id, data.class_id)
     return success(msg="分班成功")
@@ -126,4 +135,49 @@ def get_student_courses(student_id: int):
         raise HTTPException(status_code=404, detail="学生不存在")
     courses = StudentModel().get_courses(student_id)
     return success(courses, msg=f"查询到 {len(courses)} 门课程")
+
+
+# ==================== 学生选课 ====================
+
+@router.get("/{student_id}/available-courses")
+def get_available_courses(student_id: int):
+    """查：获取某学生可选的本年级课程（排除已选课程）"""
+    student = StudentModel().get_by_id(student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    courses = StudentModel().get_available_courses(student_id)
+    return success(courses, msg=f"可选课程共 {len(courses)} 门")
+
+
+@router.post("/{student_id}/select-course")
+def select_course(student_id: int, data: CourseSelect):
+    """选课：学生选一门本年级课程（不可重复选）"""
+    student = StudentModel().get_by_id(student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    course = CourseModel().get_by_id(data.course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    if student.get("grade") != course.get("grade"):
+        raise HTTPException(status_code=400,
+                            detail=f"学生年级({student.get('grade')})与课程年级({course.get('grade')})不匹配，不能选课")
+    if StudentModel().is_selected(student_id, data.course_id):
+        raise HTTPException(status_code=400, detail="该课程已选过，不能重复选")
+    StudentModel().select_course(student_id, data.course_id)
+    logger.info("学生选课 学生id:%s → 课程%s", student_id, data.course_id)
+    return success(msg="选课成功")
+
+
+@router.delete("/{student_id}/unselect-course")
+def unselect_course(student_id: int, data: CourseSelect):
+    """退课：学生退选一门已选课程"""
+    if StudentModel().get_by_id(student_id) is None:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    if CourseModel().get_by_id(data.course_id) is None:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    if not StudentModel().is_selected(student_id, data.course_id):
+        raise HTTPException(status_code=400, detail="未选该课程，无法退课")
+    StudentModel().unselect_course(student_id, data.course_id)
+    logger.info("学生退课 学生id:%s 课程%s", student_id, data.course_id)
+    return success(msg="退课成功")
 

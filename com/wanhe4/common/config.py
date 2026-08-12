@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     db_port: int = 3306          # 端口
     db_user: str = "root"        # 用户名
     db_password: str = "123456"  # 密码（开发默认）
-    db_name: str = "school_db"   # 数据库名
+    db_name: str = "school_db_wanhe"   # 数据库名
 
     # 读取配置：优先环境变量，其次项目根 .env 文件
     model_config = SettingsConfigDict(

@@ -62,7 +62,7 @@ class StatsModel():
                  "from classes c left join students s on s.class_id=c.id "
                  "group by c.id, c.name, c.grade "
                  "order by c.grade")
-            rows=db.get_all(sql)
+            rows=db.query_all(sql)
             logging.info("统计各班级人数%s",len(rows))
             return rows
         finally:

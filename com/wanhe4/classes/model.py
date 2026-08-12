@@ -37,6 +37,16 @@ class ClassModel:
             return db.query_one(sql, (cid,))
         except Exception as e:
             logger.error("查询班级异常: %s", e)
+
+    def get_grade(self, cid: int) -> Optional[str]:
+        """按班级ID查询班级年级，只查单表无 JOIN，杜绝列名冲突"""
+        db = Database()
+        try:
+            row = db.query_one("SELECT grade FROM classes WHERE id = %s", (cid,))
+            return row["grade"] if row else None
+        except Exception as e:
+            logger.error("查询班级年级异常: %s", e)
+            raise
             raise
         finally:
             db.close()
