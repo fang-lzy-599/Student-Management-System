@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EAMS 教务管理中心</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">E</div>
+            <div><strong>EAMS</strong><span>教务管理中心</span></div>
+        </div>
+        <nav>
+            <button class="nav-item active" data-panel="home" onclick="switchTab('home')"><span>⌂</span>数据总览</button>
+            <button class="nav-item" data-panel="students" onclick="switchTab('students')"><span>学</span>学生管理</button>
+            <button class="nav-item" data-panel="teachers" onclick="switchTab('teachers')"><span>师</span>教师管理</button>
+            <button class="nav-item" data-panel="classes" onclick="switchTab('classes')"><span>班</span>班级管理</button>
+            <button class="nav-item" data-panel="courses" onclick="switchTab('courses')"><span>课</span>课程管理</button>
+            <button class="nav-item nav-feature" data-panel="enrollment" onclick="switchTab('enrollment')"><span>选</span>选课与成绩</button>
+        </nav>
+        <div class="sidebar-foot">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-copy"><b id="userName">未登录</b><span id="userRole">访客</span></div>
+            <button class="icon-button" title="退出登录" onclick="logout()">↗</button>
+        </div>
+    </aside>
+
+    <main class="main-area">
+        <header class="topbar">
+            <div>
+                <button class="menu-button" onclick="toggleSidebar()">☰</button>
+                <h1 id="pageTitle">数据总览</h1>
+                <p id="pageSubtitle">查看学校的实时教务数据</p>
+            </div>
+            <button class="btn btn-ghost" onclick="refreshCurrentPanel()">↻ 刷新数据</button>
+        </header>
+
+        <section id="home" class="panel active">
+            <div class="hero-card">
+                <div><span class="eyebrow">WELCOME BACK</span><h2 id="welcomeTitle">欢迎回来</h2><p>课程、学生、教师和班级数据集中管理。</p></div>
+                <div class="hero-badge">2026<br><small>教务系统</small></div>
+            </div>
+            <div class="stat-grid">
+                <article class="stat-card blue"><span>学生总数</span><strong id="studentCount">--</strong><small>在校学生</small></article>
+                <article class="stat-card violet"><span>教师总数</span><strong id="teacherCount">--</strong><small>在职教师</small></article>
+                <article class="stat-card orange"><span>班级总数</span><strong id="classCount">--</strong><small>教学班级</small></article>
+                <article class="stat-card green"><span>课程总数</span><strong id="courseCount">--</strong><small>已开课程</small></article>
+            </div>
+            <div class="chart-grid">
+                <article class="card chart-card wide"><div class="card-head"><div><h3>班级人数</h3><p>各班学生分布</p></div></div><div id="classChart" class="chart"></div></article>
+                <article class="card chart-card"><div class="card-head"><div><h3>年级分布</h3><p>高一至高三人数</p></div></div><div id="gradeChart" class="chart"></div></article>
+                <article class="card chart-card"><div class="card-head"><div><h3>学生性别</h3><p>学生性别比例</p></div></div><div id="studentGenderChart" class="chart"></div></article>
+                <article class="card chart-card"><div class="card-head"><div><h3>教师性别</h3><p>教师性别比例</p></div></div><div id="teacherGenderChart" class="chart"></div></article>
+                <article class="card chart-card wide"><div class="card-head"><div><h3>课程成绩</h3><p>平均分与及格率</p></div></div><div id="courseChart" class="chart"></div></article>
+            </div>
+        </section>
+
+        <section id="students" class="panel">
+            <div class="section-heading"><div><h2>学生管理</h2><p>新增、编辑、分班、选老师和批量删除</p></div><button class="btn btn-primary" onclick="openStudentModal('add')">＋ 新增学生</button></div>
+            <div class="card table-card">
+                <div class="toolbar">
+                    <div class="search-box"><span>⌕</span><input id="stuKeyword" placeholder="搜索学生姓名" onkeydown="enterSearch(event, searchStudents)"></div>
+                    <button class="btn btn-secondary" onclick="searchStudents()">查询</button>
+                    <button class="btn btn-ghost" onclick="resetStudents()">重置</button>
+                    <button class="btn btn-danger-outline push-right" id="batchDeleteBtn" onclick="batchDeleteStudents()" disabled>批量删除</button>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="studentCheckAll" onchange="toggleAllStudents(this.checked)"></th><th>ID</th><th>姓名</th><th>性别</th><th>年龄</th><th>年级</th><th>班级</th><th>指导教师</th><th>选课数</th><th>操作</th></tr></thead><tbody id="studentBody"></tbody></table></div>
+                <div class="pager" id="stuPager"></div>
+            </div>
+        </section>
+
+        <section id="teachers" class="panel">
+            <div class="section-heading"><div><h2>教师管理</h2><p>维护教师资料和授课科目</p></div><button class="btn btn-primary" onclick="openTeacherModal('add')">＋ 新增教师</button></div>
+            <div class="card table-card">
+                <div class="toolbar">
+                    <div class="search-box"><span>⌕</span><input id="teaKeyword" placeholder="搜索教师姓名" onkeydown="enterSearch(event, searchTeachers)"></div>
+                    <select id="teacherSortField" aria-label="教师排序字段" onchange="changeTeacherSort()"><option value="id">按 ID</option><option value="age">按年龄</option><option value="name">按姓名</option><option value="subject">按科目</option></select>
+                    <select id="teacherSortOrder" aria-label="教师排序顺序" onchange="changeTeacherSort()"><option value="desc">降序</option><option value="asc">升序</option></select>
+                    <button class="btn btn-secondary" onclick="searchTeachers()">查询</button><button class="btn btn-ghost" onclick="resetTeachers()">重置</button>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>ID</th><th>姓名</th><th>性别</th><th>年龄</th><th>教授科目</th><th>联系电话</th><th>操作</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
+                <div class="pager" id="teaPager"></div>
+            </div>
+        </section>
+
+        <section id="classes" class="panel">
+            <div class="section-heading"><div><h2>班级管理</h2><p>查看班级名单、清空班级和批量转班</p></div><button class="btn btn-primary" onclick="openClassModal('add')">＋ 新增班级</button></div>
+            <div class="card table-card">
+                <div class="toolbar"><div class="search-box"><span>⌕</span><input id="clsKeyword" placeholder="搜索班级或年级" onkeydown="enterSearch(event, searchClasses)"></div><button class="btn btn-secondary" onclick="searchClasses()">查询</button><button class="btn btn-ghost" onclick="resetClasses()">重置</button></div>
+                <div class="table-wrap"><table><thead><tr><th>ID</th><th>班级名称</th><th>年级</th><th>班主任</th><th>学生人数</th><th>操作</th></tr></thead><tbody id="classBody"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="courses" class="panel">
+            <div class="section-heading"><div><h2>课程管理</h2><p>课程按年级开放；选课人数来自实时选课记录</p></div><button class="btn btn-primary" onclick="openCourseModal('add')">＋ 新增课程</button></div>
+            <div class="course-rule"><span>规则</span>学生只能选择与自己年级一致的课程；同一门课程不能重复选择。</div>
+            <div class="card table-card">
+                <div class="toolbar"><div class="search-box"><span>⌕</span><input id="couKeyword" placeholder="搜索课程名称" onkeydown="enterSearch(event, searchCourses)"></div><select id="courseGradeFilter" onchange="renderCourses()"><option value="">全部年级</option><option>高一</option><option>高二</option><option>高三</option></select><button class="btn btn-secondary" onclick="searchCourses()">查询</button><button class="btn btn-ghost" onclick="resetCourses()">重置</button></div>
+                <div class="table-wrap"><table><thead><tr><th>ID</th><th>课程名称</th><th>适用年级</th><th>学分</th><th>授课教师</th><th>选课人数</th><th>操作</th></tr></thead><tbody id="courseBody"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="enrollment" class="panel">
+            <div class="section-heading"><div><h2>学生选课与成绩</h2><p>选择一名学生，完成选课、退课、查课和成绩登记</p></div></div>
+            <div class="student-picker card">
+                <div><label for="enrollStudent">当前学生</label><select id="enrollStudent" onchange="loadEnrollmentWorkspace()"><option value="">请选择学生</option></select></div>
+                <div id="studentProfile" class="student-profile muted">选择学生后将自动匹配该生年级课程</div>
+            </div>
+            <div id="enrollmentEmpty" class="empty-state card"><div>选</div><h3>先选择一名学生</h3><p>系统会同时加载可选课程和已选课程。</p></div>
+            <div id="enrollmentWorkspace" class="enrollment-grid hidden">
+                <article class="card"><div class="card-head"><div><h3>可选课程</h3><p>仅显示与学生年级一致且尚未选择的课程</p></div><span class="count-pill" id="availableCount">0 门</span></div><div id="availableCourses" class="course-card-list"></div></article>
+                <article class="card"><div class="card-head"><div><h3>已选课程与成绩</h3><p>可退课，也可登记或修改成绩</p></div><span class="count-pill" id="selectedCount">0 门</span></div><div class="table-wrap"><table><thead><tr><th>课程</th><th>年级</th><th>教师</th><th>学分</th><th>成绩</th><th>操作</th></tr></thead><tbody id="selectedCourseBody"></tbody></table></div></article>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div id="modal" class="modal" aria-hidden="true" onclick="modalBackdrop(event)">
+    <div class="modal-box" role="dialog" aria-modal="true">
+        <div class="modal-header"><div><h3 id="modalTitle"></h3><p id="modalSubtitle"></p></div><button class="modal-close" onclick="closeModal()">×</button></div>
+        <div id="modalBody" class="modal-body"></div>
+        <div id="modalFooter" class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">取消</button><button id="modalOk" class="btn btn-primary">确定</button></div>
+    </div>
+</div>
+<div id="toastArea" class="toast-area"></div>
+
+<script src="/static/js/vendor/echarts.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
