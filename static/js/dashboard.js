@@ -360,12 +360,12 @@ async function openCourseModal(mode, id) {
         const [course, teachers] = await Promise.all([mode === 'edit' ? api(`/courses/one/${id}`) : Promise.resolve({}), getAllTeachers()]);
         state.courseFormTeachers = teachers;
         state.courseFormTeacherId = course.teacher_id ?? null;
-        openModal(mode === 'add' ? '新增课程' : '编辑课程', `<div class="field"><label>课程名称</label><input id="courseName" maxlength="50" value="${escapeHtml(course.name || '')}" placeholder="例如：数学" oninput="renderCourseTeacherOptions()"></div><div class="field-row"><div class="field"><label>适用年级</label><select id="courseGrade">${gradeOptions(course.grade)}</select></div><div class="field"><label>学分</label><input id="courseCredit" type="number" min="1" value="${course.credit ?? 1}"></div></div><div class="field"><label>授课教师</label><select id="courseTeacher"></select><small id="courseTeacherHint" class="muted"></small></div><div class="modal-note">授课教师的教授科目必须与课程名称一致；例如数学课程只能选择数学教师。</div>`, { subtitle: mode === 'add' ? '创建一门按年级开放的新课程' : `课程 ID：${id}` });
+        openModal(mode === 'add' ? '新增课程' : '编辑课程', `<div class="field"><label>课程名称</label><input id="courseName" maxlength="50" value="${escapeHtml(course.name || '')}" placeholder="例如：数学" oninput="renderCourseTeacherOptions()"></div><div class="field-row"><div class="field"><label>适用年级</label><select id="courseGrade">${gradeOptions(course.grade)}</select></div><div class="field"><label>学分（1-5分）</label><input id="courseCredit" type="number" min="1" max="5" value="${course.credit ?? 1}"></div></div><div class="field"><label>授课教师</label><select id="courseTeacher"></select><small id="courseTeacherHint" class="muted"></small></div><div class="modal-note">授课教师的教授科目必须与课程名称一致；例如数学课程只能选择数学教师。</div>`, { subtitle: mode === 'add' ? '创建一门按年级开放的新课程' : `课程 ID：${id}` });
         renderCourseTeacherOptions();
         modalOnOk = async () => {
             const body = { name: document.getElementById('courseName').value.trim(), credit: Number(document.getElementById('courseCredit').value), grade: document.getElementById('courseGrade').value, teacher_id: nullableNumber('courseTeacher') };
             if (!body.name) return toast('请输入课程名称', 'error');
-            if (!Number.isInteger(body.credit) || body.credit < 1) return toast('学分必须是大于等于 1 的整数', 'error');
+            if (!Number.isInteger(body.credit) || body.credit < 1 || body.credit > 5) return toast('学分必须是 1 到 5 之间的整数', 'error');
             const ok = await mutate(() => api(mode === 'add' ? '/courses/add' : `/courses/update/${id}`, mode === 'add' ? 'POST' : 'PUT', body), mode === 'add' ? '课程新增成功' : '课程已更新');
             if (ok) { closeModal(); await Promise.all([loadCourses(), loadEnrollmentWorkspace()]); }
         };

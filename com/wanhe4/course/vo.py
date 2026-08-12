@@ -10,7 +10,7 @@ class CourseCreate(BaseModel):
     """新增课程请求体。"""
 
     name: str = Field(..., max_length=50, description="课程名称")
-    credit: int = Field(1, ge=1, description="学分")
+    credit: int = Field(1, ge=1, le=5, description="学分（1-5分）")
     grade: CourseGrade = Field(..., description="所属年级：高一/高二/高三")
     teacher_id: int | None = Field(None, description="授课教师ID（可空）")
 
@@ -18,7 +18,7 @@ class CourseUpdate(BaseModel):
     """修改课程请求体。"""
 
     name: str = Field(..., max_length=50, description="课程名称")
-    credit: int = Field(1, ge=1, description="学分")
+    credit: int = Field(1, ge=1, le=5, description="学分（1-5分）")
     grade: CourseGrade = Field(..., description="所属年级：高一/高二/高三")
     teacher_id: int | None = Field(None, description="授课教师ID（可空）")
 
