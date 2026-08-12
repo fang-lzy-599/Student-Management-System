@@ -48,6 +48,27 @@ class CourseModel:
         finally:
             db.close()
 
+    def exists_by_name_and_grade(self, name, grade, exclude_course_id=None):
+        """
+        判断同一年级是否已存在同名课程。
+
+        :param name: 课程名称
+        :param grade: 年级
+        :param exclude_course_id: 编辑课程时排除当前课程 ID
+        :return: True 表示已存在重复课程
+        """
+        sql = "SELECT id FROM courses WHERE name = %s AND grade = %s"
+        params = [name, grade]
+        if exclude_course_id is not None:
+            sql += " AND id <> %s"
+            params.append(exclude_course_id)
+
+        db = Database()
+        try:
+            return db.query_one(sql, tuple(params)) is not None
+        finally:
+            db.close()
+
     def create(self, name, credit, grade, teacher_id):
         """
         新增课程

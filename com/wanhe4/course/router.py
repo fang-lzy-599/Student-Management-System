@@ -39,12 +39,15 @@ def get_course(course_id: int):
 @router.post("/add")
 def add_course(data: CourseCreate):
     """增：新增课程。"""
+    course_name = data.name.strip()
+    if CourseModel().exists_by_name_and_grade(course_name, data.grade):
+        raise HTTPException(status_code=400, detail="该年级已存在同名课程，不能重复新增")
     if data.teacher_id and TeacherModel().get_by_id(data.teacher_id) is None:
         raise HTTPException(status_code=404, detail="授课教师不存在")
-    new_id = CourseModel().create(data.name, data.credit, data.grade, data.teacher_id)
+    new_id = CourseModel().create(course_name, data.credit, data.grade, data.teacher_id)
     logger.info(
         "新增课程 id:%s 名称:%s 学分:%s 年级:%s",
-        new_id, data.name, data.credit, data.grade
+        new_id, course_name, data.credit, data.grade
     )
     return success({"id": new_id}, msg="新增成功")
 
@@ -54,11 +57,16 @@ def update_course(course_id: int, data: CourseUpdate):
     """改：修改课程。"""
     if CourseModel().get_by_id(course_id) is None:
         raise HTTPException(status_code=404, detail="课程不存在")
+    course_name = data.name.strip()
+    if CourseModel().exists_by_name_and_grade(
+        course_name, data.grade, exclude_course_id=course_id
+    ):
+        raise HTTPException(status_code=400, detail="该年级已存在同名课程，不能重复保存")
     if data.teacher_id and TeacherModel().get_by_id(data.teacher_id) is None:
         raise HTTPException(status_code=404, detail="授课教师不存在")
     if CourseModel().has_selected_students_outside_grade(course_id, data.grade):
         raise HTTPException(status_code=400, detail="该课程已有其他年级学生选课，不能修改为该年级")
-    CourseModel().update(course_id, data.name, data.credit, data.grade, data.teacher_id)
+    CourseModel().update(course_id, course_name, data.credit, data.grade, data.teacher_id)
     logger.info("修改课程 id:%s 学分:%s 年级:%s", course_id, data.credit, data.grade)
     return success(msg="修改成功")
 
