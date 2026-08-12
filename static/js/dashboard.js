@@ -570,6 +570,67 @@ function pieOption(items) {
     return { tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, legend: { bottom: 0 }, color: ['#3157d5', '#ec6e91', '#f0a348'], series: [{ type: 'pie', radius: ['38%', '67%'], center: ['50%', '44%'], label: { formatter: '{b}\n{c}人', fontSize: 11 }, data: items }] };
 }
 
+function courseScoreOption(items, grade) {
+    const labels = items.map(item => item.course_name || '未命名课程');
+    const noData = items.length === 0;
+    return {
+        title: noData ? { text: `${grade}暂无成绩数据`, left: 'center', top: '42%', textStyle: { color: '#929bad', fontSize: 13, fontWeight: 500 } } : undefined,
+        tooltip: { trigger: 'axis', formatter(params) {
+            if (!params.length) return '';
+            return `${grade} · ${params[0].axisValue}<br>${params.map(item => `${item.marker}${item.seriesName}：${item.value}${item.seriesName === '及格率' ? '%' : '分'}`).join('<br>')}`;
+        } },
+        grid: { left: 12, right: 15, top: 38, bottom: 10, containLabel: true },
+        xAxis: { type: 'category', data: labels, axisLabel: { color: '#78849a', interval: 0, rotate: labels.length > 6 ? 25 : 0 }, axisLine: { lineStyle: { color: '#e5e9f2' } } },
+        yAxis: { type: 'value', min: 0, max: 100, name: '分 / %', nameTextStyle: { color: '#929bad' }, splitLine: { lineStyle: { color: '#eef1f6' } } },
+        series: [
+            { type: 'bar', name: '平均分', data: items.map(item => Number(item.avg_score || 0)), barMaxWidth: 28, itemStyle: { color: '#15986a', borderRadius: [6, 6, 0, 0] } },
+            { type: 'line', name: '及格率', data: items.map(item => Number(item.pass_rate || 0)), smooth: true, itemStyle: { color: '#e6922e' } },
+        ],
+    };
+}
+
+function normalizeCourseScores(rawItems, gradeItems) {
+    const defaultGrades = ['高一', '高二', '高三'];
+    const gradeOrder = [...new Set([
+        ...(Array.isArray(gradeItems) ? gradeItems.map(item => item.grade) : []),
+        ...defaultGrades,
+    ].filter(Boolean))];
+
+    // 兼容同学将接口直接改为 {高一: [...], 高二: [...], 高三: [...]} 的情况。
+    if (rawItems && !Array.isArray(rawItems) && typeof rawItems === 'object') {
+        return Object.fromEntries(defaultGrades.map(grade => [grade, Array.isArray(rawItems[grade]) ? rawItems[grade] : []]));
+    }
+
+    const rows = Array.isArray(rawItems) ? rawItems : [];
+    if (rows.some(item => item.grade)) {
+        return Object.fromEntries(defaultGrades.map(grade => [grade, rows.filter(item => item.grade === grade)]));
+    }
+
+    // 当前接口虽然按年级排序，但在 model 中 pop 掉了 grade。
+    // 同一年级内课程名不重复；遇到再次出现的课程名时，即进入下一个年级。
+    const groups = [];
+    let currentGroup = [];
+    let currentNames = new Set();
+    rows.forEach(item => {
+        const courseName = item.course_name || '';
+        if (currentGroup.length && courseName && currentNames.has(courseName)) {
+            groups.push(currentGroup);
+            currentGroup = [];
+            currentNames = new Set();
+        }
+        currentGroup.push(item);
+        if (courseName) currentNames.add(courseName);
+    });
+    if (currentGroup.length) groups.push(currentGroup);
+
+    const result = Object.fromEntries(defaultGrades.map(grade => [grade, []]));
+    groups.forEach((group, index) => {
+        const grade = gradeOrder[index] || defaultGrades[index];
+        if (grade && result[grade]) result[grade] = group;
+    });
+    return result;
+}
+
 async function loadCharts() {
     if (typeof echarts === 'undefined') return;
     const [classData, gradeData, stuGender, teaGender, courseData] = await Promise.all([
@@ -579,7 +640,7 @@ async function loadCharts() {
     let grades = gradeData?.items || [];
     let studentGender = stuGender?.items || [];
     let teacherGender = teaGender?.items || [];
-    let courses = courseData?.items || [];
+    const courseItems = courseData?.items ?? courseData ?? [];
 
     // 某个统计接口暂时不可用时，用基础查询接口在浏览器端生成同样的数据。
     const needStudentFallback = !classes.length || !grades.length || !studentGender.length;
@@ -605,7 +666,16 @@ async function loadCharts() {
     chart('gradeChart', axisOption(grades.map(item => item.grade), grades.map(item => Number(item['人数'] ?? item.total ?? 0)), '#824fd4'));
     chart('studentGenderChart', pieOption(studentGender.map(item => ({ name: item.gender, value: Number(item['总数'] ?? item.total ?? item.cnt ?? 0) }))));
     chart('teacherGenderChart', pieOption(teacherGender.map(item => ({ name: item.gender, value: Number(item['count(*)'] ?? item['总数'] ?? item.total ?? item.cnt ?? 0) }))));
-    chart('courseChart', axisOption(courses.map(item => item.course_name || `课程${item.course_id}`), courses.map(item => Number(item.avg_score || 0)), '#15986a', [{ type: 'line', name: '及格率', data: courses.map(item => Number(item.pass_rate || 0)), yAxisIndex: 0, smooth: true, itemStyle: { color: '#e6922e' } }]));
+    const coursesByGrade = normalizeCourseScores(courseItems, grades);
+    const gradeCharts = [
+        ['高一', 'courseChartGrade1'],
+        ['高二', 'courseChartGrade2'],
+        ['高三', 'courseChartGrade3'],
+    ];
+    gradeCharts.forEach(([grade, chartId]) => {
+        const gradeCourses = coursesByGrade[grade] || [];
+        chart(chartId, courseScoreOption(gradeCourses, grade));
+    });
 }
 
 function resizeCharts() { Object.values(state.charts).forEach(instance => instance.resize()); }

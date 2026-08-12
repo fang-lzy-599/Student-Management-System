@@ -87,26 +87,27 @@ class StatsModel():
         db = Database()
         try:
             sql=(
-                "SELECT "
-                "  course_id, "
-                "  CASE course_id "
-                "    WHEN 1 THEN '语文' "
-                "    WHEN 2 THEN '数学' "
-                "    WHEN 3 THEN '英语' "
-                "    WHEN 4 THEN '物理'"
-                "    WHEN 5 THEN '化学'"
-                "    WHEN 6 THEN '生物' "
-                "  END AS course_name, "
+                 "SELECT "
+                "  c.grade, "
+                "  co.name AS course_name, "
                 "  COUNT(*) AS student_count, "
-                "  SUM(score) AS total_score, "
-                "  ROUND(AVG(score), 2) AS avg_score, "
-                "  SUM(CASE WHEN score >= 60 THEN 1 ELSE 0 END) AS pass_count, "
-                "  ROUND(SUM(CASE WHEN score >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS pass_rate "
-                "FROM student_course "
-                "GROUP BY course_id "
-                "ORDER BY course_id"
+                "  SUM(sc.score) AS total_score, "
+                "  ROUND(AVG(sc.score), 2) AS avg_score, "
+                "  SUM(CASE WHEN sc.score >= 60 THEN 1 ELSE 0 END) AS pass_count, "
+                "  ROUND(SUM(CASE WHEN sc.score >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS pass_rate "
+                "FROM student_course sc "
+                "JOIN courses co ON sc.course_id = co.id "
+                "JOIN students s ON sc.student_id = s.id "
+                "JOIN classes c ON s.class_id = c.id "
+                "GROUP BY c.grade, co.id, co.name "
+                "ORDER BY c.grade, co.id"
             )
             rows=db.query_all(sql)
+            result = {grade: [] for grade in ("高一", "高二", "高三")}
+            for row in rows:
+                grade = row.pop("grade")
+                result.setdefault(grade, []).append(row)
+
             logging.info("统计各课程平均分%s",len(rows))
             return rows
         finally:
